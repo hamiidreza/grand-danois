@@ -31,10 +31,10 @@ impl<const P: u64, const W: u64> Algebra<P> for Ext4<P, W> {}
 /// Precomputed tables for one prime P and ring degree d.
 pub struct NegacyclicNtt<const P: u64> {
     d: usize,
-    psi_pow: Vec<Fp<P>>, // psi^i for i < d
+    psi_pow: Vec<Fp<P>>,             // psi^i for i < d
     psi_inv_pows_scaled: Vec<Fp<P>>, // psi^{-i} · d^{-1}
     twiddles: Vec<Fp<P>>,            // omega^i for i < d/2
-    inv_twiddles: Vec<Fp<P>>, // omega^{-i} for i < d/2
+    inv_twiddles: Vec<Fp<P>>,        // omega^{-i} for i < d/2
 }
 
 fn powers<const P: u64>(g: Fp<P>, n: usize) -> Vec<Fp<P>> {
