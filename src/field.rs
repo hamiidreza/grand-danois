@@ -5,7 +5,6 @@
 //! irreducible factors mod q. That keeps short elements invertible (good
 //! challenge sets and extraction), at the price of no direct NTT mod q.
 
-
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
@@ -229,7 +228,11 @@ mod tests {
             let n = 1usize << log;
             let w = Fp::<P1>::primitive_root_of_unity(n);
             assert_eq!(w.pow(n as u64), Fp::ONE);
-            assert_eq!(w.pow((n / 2) as u64), -Fp::<P1>::ONE, "order not exact for n = {n}");
+            assert_eq!(
+                w.pow((n / 2) as u64),
+                -Fp::<P1>::ONE,
+                "order not exact for n = {n}"
+            );
         }
     }
 
