@@ -31,7 +31,7 @@ impl<const P: u64, const W: u64> Algebra<P> for Ext4<P, W> {}
 /// Precomputed tables for one prime P and ring degree d.
 pub struct NegacyclicNtt<const P: u64> {
     d: usize,
-    psi_pows: Vec<Fp<P>>,             // psi^i for i < d
+    psi_pows: Vec<Fp<P>>,            // psi^i for i < d
     psi_inv_pows_scaled: Vec<Fp<P>>, // psi^{-i} · d^{-1}
     twiddles: Vec<Fp<P>>,            // omega^i for i < d/2
     inv_twiddles: Vec<Fp<P>>,        // omega^{-i} for i < d/2
@@ -72,6 +72,37 @@ impl<const P: u64> NegacyclicNtt<P> {
 
     pub fn degree(&self) -> usize {
         self.d
+    }
+}
+
+fn bit_reverse_permute<T>(a: &mut [T]) {
+    let n = a.len();
+    let bits = n.trailing_zeros();
+    for i in 0..n {
+        let j = i.reverse_bits() >> (usize::BITS - bits);
+        if i < j {
+            a.swap(i, j);
+        }
+    }
+}
+
+/// Iterative radix-2 Cooley–Tukey; `tw[i] = ω^i` for a primitive n-th root ω.
+fn cyclic_ntt<const P: u64, T: Module<P>>(a: &mut [T], tw: &[Fp<P>]) {
+    let n = a.len();
+    bit_reverse_permute(a);
+    let mut len = 2;
+    while len <= n {
+        let half = len / 2;
+        let step = n / len;
+        for start in (0..n).step_by(len) {
+            for j in 0..half {
+                let u = a[start + j];
+                let v = a[start + j + half].scale(tw[j * step]);
+                a[start + j] = u + v;
+                a[start + j + half] = u - v;
+            }
+        }
+        len <<= 1;
     }
 }
 
