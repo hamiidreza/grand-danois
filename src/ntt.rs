@@ -31,7 +31,7 @@ impl<const P: u64, const W: u64> Algebra<P> for Ext4<P, W> {}
 /// Precomputed tables for one prime P and ring degree d.
 pub struct NegacyclicNtt<const P: u64> {
     d: usize,
-    psi_pow: Vec<Fp<P>>,             // psi^i for i < d
+    psi_pows: Vec<Fp<P>>,             // psi^i for i < d
     psi_inv_pows_scaled: Vec<Fp<P>>, // psi^{-i} · d^{-1}
     twiddles: Vec<Fp<P>>,            // omega^i for i < d/2
     inv_twiddles: Vec<Fp<P>>,        // omega^{-i} for i < d/2
@@ -57,13 +57,13 @@ impl<const P: u64> NegacyclicNtt<P> {
         let psi = Fp::<P>::primitive_root_of_unity(2 * d);
         let psi_inv = psi.inverse().unwrap();
         let d_inv = Fp::<P>::new(d as u64).inverse().unwrap();
-        let psi_pow = powers(psi, d);
+        let psi_pows = powers(psi, d);
         let psi_inv_pows_scaled = powers(psi_inv, d).into_iter().map(|x| x * d_inv).collect();
         let twiddles = powers(psi * psi, d / 2);
         let inv_twiddles = powers(psi_inv * psi_inv, d / 2);
         Self {
             d,
-            psi_pow,
+            psi_pows,
             psi_inv_pows_scaled,
             twiddles,
             inv_twiddles,
@@ -72,5 +72,19 @@ impl<const P: u64> NegacyclicNtt<P> {
 
     pub fn degree(&self) -> usize {
         self.d
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn show_tables_for_17() {
+        let t = NegacyclicNtt::<17>::new(4);
+        println!("psi_pows            = {:?}", t.psi_pows);
+        println!("psi_inv_pows_scaled = {:?}", t.psi_inv_pows_scaled);
+        println!("twiddles            = {:?}", t.twiddles);
+        println!("inv_twiddles        = {:?}", t.inv_twiddles);
     }
 }
