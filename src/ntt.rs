@@ -73,6 +73,37 @@ impl<const P: u64> NegacyclicNtt<P> {
     pub fn degree(&self) -> usize {
         self.d
     }
+
+    /// Coefficients -> evaluation (NTT) form.
+    pub fn forward<T: Module<P>>(&self, a: &mut [T]) {
+        assert_eq!(a.len(), self.d);
+        for (x, &p) in a.iter_mut().zip(&self.psi_pows) {
+            *x = x.scale(p);
+        }
+        cyclic_ntt(a, &self.twiddles);
+    }
+
+    /// Evaluation (NTT) form -> coefficients.
+    pub fn inverse<T: Module<P>>(&self, a: &mut [T]) {
+        assert_eq!(a.len(), self.d);
+        cyclic_ntt(a, &self.inv_twiddles);
+        for (x, &p) in a.iter_mut().zip(&self.psi_inv_pows_scaled) {
+            *x = x.scale(p);
+        }
+    }
+
+    /// Product of two coefficient vectors in T[X]/(X^d + 1).
+    pub fn mul<T: Algebra<P>>(&self, a: &[T], b: &[T]) -> Vec<T> {
+        let mut fa = a.to_vec();
+        let mut fb = b.to_vec();
+        self.forward(&mut fa);
+        self.forward(&mut fb);
+        for (x, y) in fa.iter_mut().zip(&fb) {
+            *x = *x * *y;
+        }
+        self.inverse(&mut fa);
+        fa
+    }
 }
 
 fn bit_reverse_permute<T>(a: &mut [T]) {
