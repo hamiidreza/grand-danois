@@ -86,7 +86,7 @@ fn bit_reverse_permute<T>(a: &mut [T]) {
     }
 }
 
-/// Iterative radix-2 Cooley–Tukey; `tw[i] = ω^i` for a primitive n-th root ω.
+/// Iterative radix-2 Cooley–Tukey; `tw[i] = omega^i` for a primitive n-th root omega.
 fn cyclic_ntt<const P: u64, T: Module<P>>(a: &mut [T], tw: &[Fp<P>]) {
     let n = a.len();
     bit_reverse_permute(a);
@@ -117,5 +117,26 @@ mod tests {
         println!("psi_inv_pows_scaled = {:?}", t.psi_inv_pows_scaled);
         println!("twiddles            = {:?}", t.twiddles);
         println!("inv_twiddles        = {:?}", t.inv_twiddles);
+    }
+
+    #[test]
+    fn cyclic_ntt_evaluates_at_powers_of_omega() {
+        // p = 17, n = 4, omega = 13: output j must be a(omega^j).
+        let omega = Fp::<17>::new(13);
+        let tw = powers(omega, 2);
+        let a: Vec<Fp<17>> = [3, 1, 0, 2].iter().map(|&x| Fp::new(x)).collect();
+        let mut out = a.clone();
+        cyclic_ntt(&mut out, &tw);
+        println!("NTT of (3, 1, 0, 2) = {:?}", out);
+        for j in 0..4 {
+            let x = omega.pow(j as u64);
+            let mut val = Fp::ZERO;
+            let mut x_pow = Fp::ONE;
+            for &c in &a {
+                val += c * x_pow;
+                x_pow *= x;
+            }
+            assert_eq!(out[j], val, "wrong value at j = {j}");
+        }
     }
 }
