@@ -170,4 +170,28 @@ mod tests {
             assert_eq!(out[j], val, "wrong value at j = {j}");
         }
     }
+
+    #[test]
+    fn negacyclic_mul_small_example() {
+        let t = NegacyclicNtt::<17>::new(4);
+        let a: Vec<Fp<17>> = [3, 1, 0, 2].iter().map(|&x| Fp::new(x)).collect();
+        let b: Vec<Fp<17>> = [1, 0, 2, 1].iter().map(|&x| Fp::new(x)).collect();
+
+        let mut fa = a.clone();
+        t.forward(&mut fa);
+        let mut fb = b.clone();
+        t.forward(&mut fb);
+        println!("forward(a) = {:?}", fa);
+        println!("forward(b) = {:?}", fb);
+
+        let c = t.mul(&a, &b);
+        println!("a * b      = {:?}", c);
+        // (3 + X + 2X^3)(1 + 2X^2 + X^3) = 2 − 3X + 4X^2 + 7X^3 mod X^4 + 1
+        let expected: Vec<Fp<17>> = [2, -3, 4, 7].iter().map(|&x| Fp::from_i64(x)).collect();
+        assert_eq!(c, expected);
+
+        let mut back = fa.clone();
+        t.inverse(&mut back);
+        assert_eq!(back, a);
+    }
 }
