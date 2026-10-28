@@ -4,7 +4,7 @@
 //! There is no NTT mod q, so we multiply exactly over the integers via NTTs
 //! modulo three auxiliary primes, recombine with CRT, and reduce mod q.
 
-use crate::ext::W;
+use crate::ext::{Ext4, Fq4, W};
 use crate::field::{Fp, Fq, P1, P2, P3, Q};
 use crate::ntt::NegacyclicNtt;
 
@@ -18,6 +18,19 @@ fn lift<const P: u64>(x: Fq) -> Fp<P> {
 fn residues<const P: u64>(ntt: &NegacyclicNtt<P>, a: &[Fq], b: &[Fq]) -> Vec<Fp<P>> {
     let la: Vec<Fp<P>> = a.iter().map(|&x| lift(x)).collect();
     let lb: Vec<Fp<P>> = b.iter().map(|&x| lift(x)).collect();
+    ntt.mul(&la, &lb)
+}
+
+/// Lift each of the four F_q coefficients of x \in F_{q^4}, keeping Y^4 = W.
+#[inline]
+fn lift4<const P: u64>(x: Fq4) -> Ext4<P, W> {
+    Ext4([lift(x.0[0]), lift(x.0[1]), lift(x.0[2]), lift(x.0[3])])
+}
+
+/// Same as `residues`, but for R_{q^4}: coefficients are Ext4 elements mod P.
+fn residues4<const P: u64>(ntt: &NegacyclicNtt<P>, a: &[Fq4], b: &[Fq4]) -> Vec<Ext4<P, W>> {
+    let la: Vec<Ext4<P, W>> = a.iter().map(|&x| lift4(x)).collect();
+    let lb: Vec<Ext4<P, W>> = b.iter().map(|&x| lift4(x)).collect();
     ntt.mul(&la, &lb)
 }
 
@@ -75,6 +88,24 @@ impl RingMul {
         let r3 = residues(&self.ntt3, a, b);
         (0..self.d)
             .map(|i| self.crt(r1[i].value(), r2[i].value(), r3[i].value()))
+            .collect()
+    }
+
+    /// Product in R_{q^4}.
+    pub fn mul4(&self, a: &[Fq4], b: &[Fq4]) -> Vec<Fq4> {
+        assert_eq!(a.len(), self.d);
+        assert_eq!(b.len(), self.d);
+        let r1 = residues4(&self.ntt1, a, b);
+        let r2 = residues4(&self.ntt2, a, b);
+        let r3 = residues4(&self.ntt3, a, b);
+        (0..self.d)
+            .map(|i| {
+                let mut out = [Fq::ZERO; 4];
+                for (c, o) in out.iter_mut().enumerate() {
+                    *o = self.crt(r1[i].0[c].value(), r2[i].0[c].value(), r3[i].0[c].value());
+                }
+                Ext4(out)
+            })
             .collect()
     }
 }
