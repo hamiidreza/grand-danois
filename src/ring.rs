@@ -8,6 +8,19 @@ use crate::ext::W;
 use crate::field::{Fp, Fq, P1, P2, P3, Q};
 use crate::ntt::NegacyclicNtt;
 
+/// Lift x \in F_q to its centered integer, then reduce mod P.
+#[inline]
+fn lift<const P: u64>(x: Fq) -> Fp<P> {
+    Fp::<P>::from_i64(x.centered())
+}
+
+/// The product a*b as an integer polynomial, reduced mod one auxiliary prime P.
+fn residues<const P: u64>(ntt: &NegacyclicNtt<P>, a: &[Fq], b: &[Fq]) -> Vec<Fp<P>> {
+    let la: Vec<Fp<P>> = a.iter().map(|&x| lift(x)).collect();
+    let lb: Vec<Fp<P>> = b.iter().map(|&x| lift(x)).collect();
+    ntt.mul(&la, &lb)
+}
+
 pub struct RingMul {
     d: usize,
     ntt1: NegacyclicNtt<P1>,
@@ -51,5 +64,17 @@ impl RingMul {
             x as i128 - m as i128
         };
         Fq::from_i128(signed)
+    }
+
+    /// Product in R_q.
+    pub fn mul(&self, a: &[Fq], b: &[Fq]) -> Vec<Fq> {
+        assert_eq!(a.len(), self.d);
+        assert_eq!(b.len(), self.d);
+        let r1 = residues(&self.ntt1, a, b);
+        let r2 = residues(&self.ntt2, a, b);
+        let r3 = residues(&self.ntt3, a, b);
+        (0..self.d)
+            .map(|i| self.crt(r1[i].value(), r2[i].value(), r3[i].value()))
+            .collect()
     }
 }
