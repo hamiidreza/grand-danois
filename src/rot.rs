@@ -46,3 +46,73 @@ pub fn alpha_fold(a: &[Fq], alpha: Fq4) -> Vec<Fq4> {
     }
     u
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ring::RingMul;
+    use crate::testutil::Rng;
+
+    fn fq_vec(xs: &[i64]) -> Vec<Fq> {
+        xs.iter().map(|&x| Fq::from_i64(x)).collect()
+    }
+
+    #[test]
+    fn rot_is_multiplication_by_x() {
+        // Worked example: a = 3 + X + 2X^3, so a * X = −2 + 3X + X^2.
+        assert_eq!(rot(&fq_vec(&[3, 1, 0, 2])), fq_vec(&[-2, 3, 1, 0]));
+
+        let mut rng = Rng::new(3);
+        for &d in &[2, 64, 1024] {
+            let rm = RingMul::new(d);
+            let a = rng.vec_fq(d);
+            let mut x = vec![Fq::ZERO; d];
+            x[1] = Fq::ONE;
+            assert_eq!(rot(&a), rm.mul(&a, &x), "d = {d}");
+        }
+    }
+
+    /// \alpha^T * v = \Sum_i \alpha^i v_i: the fold of a single column, done directly.
+    fn fold_column(col: &[Fq], alpha: Fq4) -> Fq4 {
+        let mut acc = Fq4::ZERO;
+        let mut p = Fq4::ONE;
+        for &c in col {
+            acc += p.mul_base(c);
+            p *= alpha;
+        }
+        acc
+    }
+
+    #[test]
+    fn alpha_fold_matches_explicit_fold() {
+        let mut rng = Rng::new(4);
+        for &d in &[1, 2, 4, 16, 128, 1024] {
+            let (a, alpha) = (rng.vec_fq(d), rng.fq4());
+            let explicit: Vec<Fq4> = rotation_matrix_columns(&a)
+                .iter()
+                .map(|col| fold_column(col, alpha))
+                .collect();
+            assert_eq!(alpha_fold(&a, alpha), explicit, "d = {d}");
+        }
+    }
+
+    #[test]
+    fn alpha_fold_of_monomials() {
+        let d = 8;
+        let alpha = Rng::new(5).fq4();
+        let pows: Vec<Fq4> = (0..d).map(|i| alpha.pow(i as u128)).collect();
+
+        // a = 1: M_a = I, so u = (1, \alpha, …, \alpha^{d−1}); the correction never fires.
+        let mut one = vec![Fq::ZERO; d];
+        one[0] = Fq::ONE;
+        assert_eq!(alpha_fold(&one, alpha), pows);
+
+        // a = X^{d−1}: column 0 is e_{d−1}, and every later column has wrapped
+        // to −e_{j−1}, so u = (\alpha^{d−1}, −1, −\alpha, …, −\alpha^{d−2}).
+        let mut top = vec![Fq::ZERO; d];
+        top[d - 1] = Fq::ONE;
+        let mut expected = vec![pows[d - 1]];
+        expected.extend(pows[..d - 1].iter().map(|&p| -p));
+        assert_eq!(alpha_fold(&top, alpha), expected);
+    }
+}

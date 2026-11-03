@@ -109,3 +109,86 @@ impl RingMul {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rot::rotation_matrix_columns;
+    use crate::testutil::Rng;
+
+    /// Reference product in R_q: M_a * cf(x), computed directly in F_q.
+    fn reference_mul(a: &[Fq], x: &[Fq]) -> Vec<Fq> {
+        let mut out = vec![Fq::ZERO; a.len()];
+        for (col, &xj) in rotation_matrix_columns(a).iter().zip(x) {
+            for (o, &c) in out.iter_mut().zip(col) {
+                *o += c * xj;
+            }
+        }
+        out
+    }
+
+    /// Reference product in R_{q^4}: split a = \Sum_k a^(k) Y^k into four R_q
+    /// components, multiply all pairs with `reference_mul`, and fold Y^4 = W.
+    fn reference_mul4(a: &[Fq4], b: &[Fq4]) -> Vec<Fq4> {
+        let w = Fq::new(W);
+        let mut out = vec![Fq4::ZERO; a.len()];
+        for k in 0..4 {
+            for l in 0..4 {
+                let ak: Vec<Fq> = a.iter().map(|x| x.0[k]).collect();
+                let bl: Vec<Fq> = b.iter().map(|x| x.0[l]).collect();
+                let prod = reference_mul(&ak, &bl);
+                let (slot, factor) = if k + l < 4 {
+                    (k + l, Fq::ONE)
+                } else {
+                    (k + l - 4, w)
+                };
+                for (o, &p) in out.iter_mut().zip(&prod) {
+                    o.0[slot] += factor * p;
+                }
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn mul_matches_rotation_matrix() {
+        let mut rng = Rng::new(1);
+        for &d in &[2, 64, 1024] {
+            let rm = RingMul::new(d);
+            let (a, x) = (rng.vec_fq(d), rng.vec_fq(d));
+            assert_eq!(rm.mul(&a, &x), reference_mul(&a, &x), "d = {d}");
+        }
+    }
+
+    #[test]
+    fn mul_is_exact_at_the_crt_bound() {
+        let d = 1024;
+        let rm = RingMul::new(d);
+        let h = Fq::from_i64((Q as i64 - 1) / 2); // largest centered value
+        for (a0, x0) in [(h, h), (h, -h)] {
+            let (a, x) = (vec![a0; d], vec![x0; d]);
+            assert_eq!(rm.mul(&a, &x), reference_mul(&a, &x));
+        }
+    }
+
+    #[test]
+    fn mul4_matches_componentwise_reference() {
+        let mut rng = Rng::new(2);
+        for &d in &[2, 64, 1024] {
+            let rm = RingMul::new(d);
+            let (a, b) = (rng.vec_fq4(d), rng.vec_fq4(d));
+            assert_eq!(rm.mul4(&a, &b), reference_mul4(&a, &b), "d = {d}");
+        }
+    }
+
+    #[test]
+    fn mul4_is_exact_at_the_crt_bound() {
+        let d = 1024;
+        let rm = RingMul::new(d);
+        let h = Fq::from_i64((Q as i64 - 1) / 2);
+        for (a0, b0) in [(h, h), (h, -h)] {
+            let (a, b) = (vec![Ext4([a0; 4]); d], vec![Ext4([b0; 4]); d]);
+            assert_eq!(rm.mul4(&a, &b), reference_mul4(&a, &b));
+        }
+    }
+}

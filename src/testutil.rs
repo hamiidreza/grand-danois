@@ -29,4 +29,12 @@ impl Rng {
     pub fn fq4(&mut self) -> Fq4 {
         Ext4([self.fq(), self.fq(), self.fq(), self.fq()])
     }
+
+    pub fn vec_fq(&mut self, n: usize) -> Vec<Fq> {
+        (0..n).map(|_| self.fq()).collect()
+    }
+
+    pub fn vec_fq4(&mut self, n: usize) -> Vec<Fq4> {
+        (0..n).map(|_| self.fq4()).collect()
+    }
 }
