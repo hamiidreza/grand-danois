@@ -16,7 +16,7 @@ pub fn rot(v: &[Fq]) -> Vec<Fq> {
     out
 }
 
-/// Columns of M_a. O(d²) memory; reference and tests only.
+/// Columns of M_a. O(d^2) memory; reference and tests only.
 pub fn rotation_matrix_columns(a: &[Fq]) -> Vec<Vec<Fq>> {
     let mut cols = Vec::with_capacity(a.len());
     let mut c = a.to_vec();
