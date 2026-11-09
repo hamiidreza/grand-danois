@@ -1,7 +1,7 @@
 //! Gadget decomposition G^{-1} with balanced digits.
 //!
-//! g = (1, b, …, b^{\delta−1}) with b = 2^{log_b}. Each x \in F_q becomes \delta digits
-//! in [−b/2, b/2) with \sum_k x_k b^k \equiv x (mod q).
+//! g = (1, b, ..., b^{\delta-1}) with b = 2^{log_b}. Each x \in F_q becomes \delta digits
+//! in [-b/2, b/2) with \sum_k x_k b^k \equiv x (mod q).
 
 use crate::field::{Fq, Q};
 
@@ -46,13 +46,13 @@ impl Gadget {
         for _ in 0..self.delta {
             let r = (v + half).rem_euclid(b) - half; // balanced remainder in [−b/2, b/2)
             digits.push(r);
-            v = (v - r) / b; // exact: v − r is divisible by b
+            v = (v - r) / b; // exact: v - r is divisible by b
         }
         debug_assert_eq!(v, 0, "carry left over");
         digits
     }
 
-    /// s \in R_q -> (\hat{s}^(0), ..., \hat{s}^(\delta−1)), where coefficient t of \hat{s}^(k) is
+    /// s \in R_q -> (\hat{s}^(0), ..., \hat{s}^(\delta-1)), where coefficient t of \hat{s}^(k) is
     /// digit k of coefficient t of s. So s = \Sum_k b^k \hat{s}^(k), |\hat{s}^(k)|_\infty <= b/2.
     pub fn decompose_ring(&self, s: &[Fq]) -> Vec<Vec<Fq>> {
         let mut out = vec![vec![Fq::ZERO; s.len()]; self.delta];
@@ -65,7 +65,7 @@ impl Gadget {
     }
 
     /// G^{-1}: (s_0, ..., s_{\eta-1}) \in R_q^\eta -> \hat{s} \in R_q^{\eta \delta}, element-major,
-    /// digit-minor: \hat{s} = (\hat{s}_0^(0), ..., \hat{s}_0^(\delta-1), \hat{s}_1^(0), ..., \hat{s}_1^(\delta−1), ...).
+    /// digit-minor: \hat{s} = (\hat{s}_0^(0), ..., \hat{s}_0^(\delta-1), \hat{s}_1^(0), ..., \hat{s}_1^(\delta-1), ...).
     pub fn decompose(&self, s: &[Vec<Fq>]) -> Vec<Vec<Fq>> {
         s.iter().flat_map(|si| self.decompose_ring(si)).collect()
     }
