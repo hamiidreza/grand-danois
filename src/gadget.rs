@@ -53,7 +53,7 @@ impl Gadget {
     }
 
     /// s \in R_q -> (\hat{s}^(0), ..., \hat{s}^(\delta−1)), where coefficient t of \hat{s}^(k) is
-    /// digit k of coefficient t of s. So s = \Sum_k b^k \delta{s}^(k), |\hat{s}^(k)|_\infty <= b/2.
+    /// digit k of coefficient t of s. So s = \Sum_k b^k \hat{s}^(k), |\hat{s}^(k)|_\infty <= b/2.
     pub fn decompose_ring(&self, s: &[Fq]) -> Vec<Vec<Fq>> {
         let mut out = vec![vec![Fq::ZERO; s.len()]; self.delta];
         for (t, &x) in s.iter().enumerate() {
