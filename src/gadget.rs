@@ -63,4 +63,35 @@ impl Gadget {
         }
         out
     }
+
+    /// G^{-1}: (s_0, ..., s_{\eta-1}) \in R_q^\eta -> \hat{s} \in R_q^{\eta \delta}, element-major,
+    /// digit-minor: \hat{s} = (\hat{s}_0^(0), ..., \hat{s}_0^(\delta-1), \hat{s}_1^(0), ..., \hat{s}_1^(\delta−1), ...).
+    pub fn decompose(&self, s: &[Vec<Fq>]) -> Vec<Vec<Fq>> {
+        s.iter().flat_map(|si| self.decompose_ring(si)).collect()
+    }
+
+    /// G * \hat{s} with G = I_\eta \otimes (1, b, ..., b^{\delta-1}): each block of \delta consecutive
+    /// elements of \hat{s} recombines to \Sum_k b^k \hat{s}^(k). Inverts `decompose`.
+    pub fn recompose(&self, s_hat: &[Vec<Fq>]) -> Vec<Vec<Fq>> {
+        assert_eq!(
+            s_hat.len() % self.delta,
+            0,
+            "length must be a multiple of delta"
+        );
+        let b = Fq::from_i64(1i64 << self.log_b);
+        s_hat
+            .chunks(self.delta)
+            .map(|block| {
+                let mut acc = vec![Fq::ZERO; block[0].len()];
+                let mut bk = Fq::ONE;
+                for part in block {
+                    for (a, &p) in acc.iter_mut().zip(part) {
+                        *a += bk * p;
+                    }
+                    bk *= b;
+                }
+                acc
+            })
+            .collect()
+    }
 }
